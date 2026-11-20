@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Firebase config lives in the "Firebase" environment's secrets
+    environment: Firebase
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -32,8 +34,8 @@ jobs:
         env:
           # Served from https://<user>.github.io/<repo>/
           BASE_PATH: /${{ github.event.repository.name }}/
-          # Repository → Settings → Secrets and variables → Actions → Variables
-          # (public identifiers, so repo *variables* are fine; secrets also work)
+          # Settings → Environments → Firebase (environment secrets), or repo-level
+          # variables/secrets. Public identifiers, so variables are fine too.
           VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN || secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || secrets.VITE_FIREBASE_PROJECT_ID }}
