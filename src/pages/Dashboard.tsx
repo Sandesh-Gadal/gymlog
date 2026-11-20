@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { Heatmap } from '../components/Heatmap'
 import { Empty, PRBadge, SectionHeader, Stat } from '../components/ui'
 import { addDays, fmtKg, formatDate, startOfWeek, toISODate, todayISO } from '../lib/format'
+import { buildHeatmap } from '../lib/heatmap'
 import { workoutVolume } from '../lib/pr'
 import { useData } from '../state/DataContext'
 
@@ -13,6 +15,7 @@ export function Dashboard() {
   const weekDays = Array.from({ length: 7 }, (_, i) => toISODate(addDays(weekStart, i)))
   const trainedDates = new Set(workouts.map((w) => w.date))
   const thisWeek = weekDays.filter((d) => trainedDates.has(d)).length
+  const heatmap = useMemo(() => buildHeatmap(workouts, now), [workouts, now])
 
   const latest = weights[0]
   const prevWeight = weights[1]
@@ -64,6 +67,16 @@ export function Dashboard() {
             )
           })}
         </ol>
+      </section>
+
+      <section className="card mt-3">
+        <div className="mb-3 flex items-baseline justify-between">
+          <span className="label mb-0">Last 6 months</span>
+          <span className="text-sm text-muted">
+            <b className="text-fg">{heatmap.sessions}</b> workouts
+          </span>
+        </div>
+        <Heatmap data={heatmap} />
       </section>
 
       <div className="mt-3 grid grid-cols-2 gap-3">

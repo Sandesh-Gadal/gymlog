@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added
+- Dashboard activity heatmap: a GitHub-style grid of the last 26 weeks, shaded by each day's training volume.
+
 ## [0.1.0] - 2026-11-21
 
 First MVP.
