@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ### Added
 - Dashboard activity heatmap: a GitHub-style grid of the last 26 weeks, shaded by each day's training volume.
+- Weekly planner (`/plan`, also linked from Profile and the Dashboard): named sessions with set and rep targets, a Monday to Sunday schedule with rest days, and daily items such as mobility. A one-tap Push / Pull / Legs template is included.
+- Logging starts from the plan: "Start Push" fills in the exercises with planned sets, last weights and rep targets, and shows the session notes. Rest days offer "Start mobility".
+- Dashboard week strip shows each day's planned session, and the weekly target follows the plan.
+- Built-in exercises: Hammer Curl, Overhead Triceps Extension, Shoulder Pass-through (mobility).
+- Backups include the weekly plan. Older backups without one still import.
 
 ## [0.1.0] - 2026-11-21
 

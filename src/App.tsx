@@ -5,6 +5,7 @@ import { ExerciseDetail } from './pages/ExerciseDetail'
 import { Exercises } from './pages/Exercises'
 import { History } from './pages/History'
 import { LogWorkout } from './pages/LogWorkout'
+import { PlanPage } from './pages/Plan'
 import { Profile } from './pages/Profile'
 import { SignIn } from './pages/SignIn'
 import { Weight } from './pages/Weight'
@@ -25,6 +26,7 @@ export function AppRoutes() {
         <Route path="exercises/:id" element={<ExerciseDetail />} />
         <Route path="weight" element={<Weight />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="plan" element={<PlanPage />} />
         <Route path="*" element={<Dashboard />} />
       </Route>
     </Routes>

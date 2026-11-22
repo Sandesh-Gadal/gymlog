@@ -57,4 +57,25 @@ describe('App (local mode)', () => {
     expect(await screen.findByText(/You set 3 new PRs/)).toBeInTheDocument()
     expect(screen.getByText('40 kg × 10 (prev 35 kg)')).toBeInTheDocument()
   })
+
+  it('sets up the PPL plan and starts a workout prefilled from it', async () => {
+    const user = userEvent.setup()
+    renderApp('/plan')
+    await user.click(await screen.findByRole('button', { name: 'Use Push / Pull / Legs template' }))
+    expect(await screen.findByRole('combobox', { name: 'Saturday session' })).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: 'Sunday session' })).toHaveValue('push')
+
+    await user.click(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', { name: 'Log' }))
+    const planned = screen.getByRole('region', { name: 'Planned workout' })
+    // Whatever today is, there is a start button (a session, or mobility on rest days)
+    await user.click(within(planned).getByRole('button', { name: /^Start / }))
+
+    const mobility = screen.getByRole('region', { name: 'Shoulder Pass-through (mobility)' })
+    expect(within(mobility).getByText('2 × 10–15')).toBeInTheDocument()
+    expect(within(mobility).getAllByPlaceholderText('10–15')).toHaveLength(2)
+
+    await user.type(within(mobility).getByLabelText('Set 1 reps'), '12')
+    await user.click(screen.getByRole('button', { name: 'Save workout' }))
+    expect(await screen.findByText('Workout saved.')).toBeInTheDocument()
+  })
 })

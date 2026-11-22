@@ -37,6 +37,10 @@ const BUILT_IN: [id: string, name: string, group: MuscleGroup][] = [
   ['plank', 'Plank (seconds as reps)', 'core'],
   ['hanging-leg-raise', 'Hanging Leg Raise', 'core'],
   ['cable-crunch', 'Cable Crunch', 'core'],
+  // v0.2
+  ['hammer-curl', 'Hammer Curl', 'arms'],
+  ['overhead-triceps-extension', 'Overhead Triceps Extension', 'arms'],
+  ['shoulder-pass-through', 'Shoulder Pass-through (mobility)', 'shoulders'],
 ]
 
 export const BUILT_IN_EXERCISES: Exercise[] = BUILT_IN.map(([id, name, muscleGroup]) => ({

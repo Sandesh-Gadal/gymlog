@@ -8,7 +8,7 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
-import type { Backup, CollectionMap, CollectionName, Profile } from '../lib/types'
+import type { Backup, CollectionMap, CollectionName, Plan, Profile } from '../lib/types'
 import type { Repository } from './repository'
 
 /**
@@ -17,10 +17,12 @@ import type { Repository } from './repository'
  *   users/{uid}/exercises/{id}   (custom exercises only)
  *   users/{uid}/weights/{date}
  *   users/{uid}/meta/profile
+ *   users/{uid}/meta/plan
  */
 export function createFirestoreRepo(db: Firestore, uid: string): Repository {
   const col = (name: CollectionName) => collection(db, 'users', uid, name)
   const profileRef = doc(db, 'users', uid, 'meta', 'profile')
+  const planRef = doc(db, 'users', uid, 'meta', 'plan')
 
   // Firestore resolves write promises only after the server acknowledges. Offline that
   // never happens until reconnect, so we resolve immediately and log failures instead.
@@ -46,6 +48,12 @@ export function createFirestoreRepo(db: Firestore, uid: string): Repository {
     saveProfile(p) {
       return fire(setDoc(profileRef, p))
     },
+    watchPlan(cb) {
+      return onSnapshot(planRef, (snap) => cb(snap.exists() ? (snap.data() as Plan) : null))
+    },
+    savePlan(p) {
+      return fire(setDoc(planRef, stripUndefined(p)))
+    },
     async replaceAll(b: Backup) {
       // Batches are limited to 500 operations each.
       const ops: ((batch: ReturnType<typeof writeBatch>) => void)[] = []
@@ -55,6 +63,7 @@ export function createFirestoreRepo(db: Firestore, uid: string): Repository {
         for (const item of b[name]) ops.push((batch) => batch.set(doc(col(name), item.id), stripUndefined(item)))
       }
       if (b.profile) ops.push((batch) => batch.set(profileRef, b.profile!))
+      if (b.plan) ops.push((batch) => batch.set(planRef, stripUndefined(b.plan!)))
       for (let i = 0; i < ops.length; i += 450) {
         const batch = writeBatch(db)
         ops.slice(i, i + 450).forEach((op) => op(batch))

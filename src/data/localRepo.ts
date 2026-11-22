@@ -1,4 +1,4 @@
-import type { Backup, CollectionMap, CollectionName, Profile } from '../lib/types'
+import type { Backup, CollectionMap, CollectionName, Plan, Profile } from '../lib/types'
 import type { Repository } from './repository'
 
 /**
@@ -48,11 +48,18 @@ export function createLocalRepo(storage: Storage = window.localStorage, prefix =
     async saveProfile(p) {
       write('profile', p)
     },
+    watchPlan(cb) {
+      return listen('plan', cb as Listener, read<Plan | null>('plan', null))
+    },
+    async savePlan(p) {
+      write('plan', p)
+    },
     async replaceAll(b: Backup) {
       write('workouts', b.workouts)
       write('exercises', b.exercises)
       write('weights', b.weights)
       write('profile', b.profile)
+      if (b.plan) write('plan', b.plan)
     },
   }
 }

@@ -1,4 +1,4 @@
-import type { Backup, CollectionMap, CollectionName, Profile } from '../lib/types'
+import type { Backup, CollectionMap, CollectionName, Plan, Profile } from '../lib/types'
 
 /**
  * Storage abstraction. The UI only talks to this interface, so the backend can be swapped
@@ -14,6 +14,8 @@ export interface Repository {
   remove(name: CollectionName, id: string): Promise<void>
   watchProfile(cb: (p: Profile | null) => void): () => void
   saveProfile(p: Profile): Promise<void>
+  watchPlan(cb: (p: Plan | null) => void): () => void
+  savePlan(p: Plan): Promise<void>
   /** Replace everything with the backup contents (used by JSON import). */
   replaceAll(b: Backup): Promise<void>
 }

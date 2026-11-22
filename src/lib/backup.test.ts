@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { workout } from '../test/fixtures'
 import { BackupError, createBackup, parseBackup } from './backup'
+import { pplTemplate } from './plan'
 import { DEFAULT_PROFILE } from './profile'
 
 describe('backup', () => {
@@ -30,5 +31,22 @@ describe('backup', () => {
     const b = createBackup(data) as unknown as { workouts: { entries: { sets: unknown[] }[] }[] }
     b.workouts[0].entries[0].sets = [{ weight: 'heavy', reps: 10 }]
     expect(() => parseBackup(b)).toThrow('Workout #1 has a malformed set.')
+  })
+
+  it('round-trips a weekly plan', () => {
+    const b = createBackup({ ...data, workouts: [], plan: pplTemplate(1) })
+    expect(parseBackup(JSON.parse(JSON.stringify(b))).plan).toEqual(pplTemplate(1))
+  })
+
+  it('accepts backups made before the planner (no plan field)', () => {
+    const b = createBackup({ ...data, workouts: [] }) as unknown as Record<string, unknown>
+    delete b.plan
+    expect(parseBackup(b).plan).toBeNull()
+  })
+
+  it('rejects a malformed plan', () => {
+    const plan = pplTemplate(1) as unknown as { week: unknown[] }
+    plan.week = plan.week.slice(0, 5)
+    expect(() => parseBackup({ ...createBackup({ ...data, workouts: [] }), plan })).toThrow('Weekly plan has a malformed week.')
   })
 })

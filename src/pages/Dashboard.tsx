@@ -4,17 +4,20 @@ import { Heatmap } from '../components/Heatmap'
 import { Empty, PRBadge, SectionHeader, Stat } from '../components/ui'
 import { addDays, fmtKg, formatDate, startOfWeek, toISODate, todayISO } from '../lib/format'
 import { buildHeatmap } from '../lib/heatmap'
+import { sessionFor, trainingDays } from '../lib/plan'
 import { workoutVolume } from '../lib/pr'
 import { useData } from '../state/DataContext'
 
 export function Dashboard() {
-  const { profile, workouts, weights, prEvents, exerciseName } = useData()
+  const { profile, plan, workouts, weights, prEvents, exerciseName } = useData()
   const [now] = useState(() => new Date())
   const today = todayISO(now)
   const weekStart = startOfWeek(now)
   const weekDays = Array.from({ length: 7 }, (_, i) => toISODate(addDays(weekStart, i)))
   const trainedDates = new Set(workouts.map((w) => w.date))
   const thisWeek = weekDays.filter((d) => trainedDates.has(d)).length
+  const target = plan ? trainingDays(plan) : profile.daysPerWeek
+  const todaySession = sessionFor(plan, today)
   const heatmap = useMemo(() => buildHeatmap(workouts, now), [workouts, now])
 
   const latest = weights[0]
@@ -34,7 +37,7 @@ export function Dashboard() {
           <h1 className="page-title">{greeting}</h1>
         </div>
         <Link to="/log" className="btn-primary">
-          {trainedDates.has(today) ? 'Log another' : 'Start workout'}
+          {trainedDates.has(today) ? 'Log another' : todaySession ? `Start ${todaySession.title}` : 'Start workout'}
         </Link>
       </header>
 
@@ -43,7 +46,7 @@ export function Dashboard() {
           <span className="label mb-0">This week</span>
           <span className="text-sm">
             <b className="text-fg">{thisWeek}</b>
-            <span className="text-muted"> / {profile.daysPerWeek} sessions</span>
+            <span className="text-muted"> / {target} {plan ? 'planned' : 'sessions'}</span>
           </span>
         </div>
         <ol className="grid grid-cols-7 gap-1.5" aria-label="Training days this week">
@@ -63,10 +66,27 @@ export function Dashboard() {
                 >
                   {Number(d.slice(8))}
                 </span>
+                {plan && (
+                  <span className={`max-w-full truncate text-[10px] ${isToday ? 'font-semibold text-fg' : 'text-muted'}`}>
+                    {sessionFor(plan, d)?.title ?? 'Rest'}
+                  </span>
+                )}
               </li>
             )
           })}
         </ol>
+        <Link to="/plan" className="mt-3 block text-xs text-muted">
+          {plan ? (
+            <>
+              Today: <b className="text-fg">{todaySession?.title ?? 'Rest day'}</b>
+              {plan.daily.length > 0 && ' + mobility'} · <span className="text-accent">Edit plan</span>
+            </>
+          ) : (
+            <>
+              No weekly plan yet. <span className="text-accent">Set one up</span>
+            </>
+          )}
+        </Link>
       </section>
 
       <section className="card mt-3">

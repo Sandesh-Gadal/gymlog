@@ -18,13 +18,13 @@ const NUM_FIELDS: { key: keyof ProfileT; label: string; step?: string }[] = [
 
 export function Profile() {
   const { user, mode, signOut } = useAuth()
-  const { profile, repo, workouts, customExercises, weights } = useData()
+  const { profile, plan, repo, workouts, customExercises, weights } = useData()
   const [theme, setTheme] = useState<ThemePref>(getThemePref())
   const [msg, setMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const exportData = () => {
-    downloadJSON(`gymlog-backup-${todayISO()}.json`, createBackup({ profile, workouts, exercises: customExercises, weights }))
+    downloadJSON(`gymlog-backup-${todayISO()}.json`, createBackup({ profile, plan, workouts, exercises: customExercises, weights }))
   }
 
   const importData = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -53,6 +53,11 @@ export function Profile() {
       </header>
 
       <ProfileForm key={profile.updatedAt} />
+
+      <Link to="/plan" className="card mt-3 flex items-center justify-between">
+        <span>Weekly plan</span>
+        <span className="text-muted">›</span>
+      </Link>
 
       <Link to="/weight" className="card mt-3 flex items-center justify-between">
         <span>Body weight log</span>

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { ExercisePicker } from '../components/ExercisePicker'
 import { fmtKg, formatDate, newId, todayISO } from '../lib/format'
-import type { Workout, WorkoutEntry } from '../lib/types'
-import { toWorkoutEntries, type DraftEntry } from '../lib/workoutForm'
+import { formatTarget, itemsFor, repsHint, sessionFor } from '../lib/plan'
+import type { Plan, PlanSession, Workout, WorkoutEntry } from '../lib/types'
+import { entriesFromPlan, toWorkoutEntries, type DraftEntry } from '../lib/workoutForm'
 import { useData } from '../state/DataContext'
 
 interface Draft {
@@ -12,6 +13,8 @@ interface Draft {
   durationMin: string
   startedAt: number
   entries: DraftEntry[]
+  /** plan session this draft was started from (null = daily items only); undefined = not from the plan */
+  sessionId?: string | null
 }
 
 const DRAFT_KEY = 'gymlog:draft'
@@ -64,7 +67,7 @@ export function LogWorkout() {
 function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }) {
   const id = editing?.id
   const navigate = useNavigate()
-  const { workouts, exercises, exerciseName, repo } = useData()
+  const { workouts, exercises, exerciseName, repo, plan } = useData()
   const [draft, setDraft] = useState<Draft>(initial)
   const [picking, setPicking] = useState(false)
 
@@ -84,6 +87,19 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
   }, [workouts, id])
 
   const update = (fn: (d: Draft) => Draft) => setDraft((d) => fn(structuredClone(d)))
+
+  // Targets come from the session this draft was started from, else whatever is planned for its date.
+  const session =
+    draft.sessionId === undefined ? sessionFor(plan, draft.date) : (plan?.sessions.find((s) => s.id === draft.sessionId) ?? null)
+  const targets = useMemo(() => new Map(itemsFor(plan, session).map((i) => [i.exerciseId, i])), [plan, session])
+
+  const startFromPlan = (s: PlanSession | null) =>
+    update((d) => ({
+      ...d,
+      sessionId: s?.id ?? null,
+      startedAt: Date.now(),
+      entries: entriesFromPlan(itemsFor(plan, s), (exId) => lastSets.get(exId)?.sets, newId),
+    }))
 
   const addExercise = (exerciseId: string) => {
     setPicking(false)
@@ -142,14 +158,27 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
         />
       </header>
 
+      {!id && draft.entries.length === 0 && (
+        <PlanStart plan={plan} date={draft.date} onStart={startFromPlan} />
+      )}
+      {draft.sessionId !== undefined && session?.notes && draft.entries.length > 0 && (
+        <p className="mb-3 rounded-xl bg-surface-2 px-3 py-2 text-xs text-muted">
+          <b className="text-fg">{session.title}</b> · {session.notes}
+        </p>
+      )}
+
       <div className="space-y-3">
         {draft.entries.map((entry, ei) => {
           const last = lastSets.get(entry.exerciseId)
+          const target = targets.get(entry.exerciseId)
           return (
             <section key={entry.key} className="card" aria-label={exerciseName(entry.exerciseId)}>
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
-                  <h2 className="font-semibold">{exerciseName(entry.exerciseId)}</h2>
+                  <h2 className="font-semibold">
+                    {exerciseName(entry.exerciseId)}
+                    {target && <span className="ml-2 text-xs font-medium text-accent">{formatTarget(target)}</span>}
+                  </h2>
                   {last && (
                     <p className="text-xs text-muted">
                       Last ({formatDate(last.date, { day: 'numeric', month: 'short' })}):{' '}
@@ -187,7 +216,7 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
                     className="input"
                     inputMode="numeric"
                     aria-label={`Set ${si + 1} reps`}
-                    placeholder="0"
+                    placeholder={target ? repsHint(target) : '0'}
                     value={s.reps}
                     onChange={(e) => update((d) => ((d.entries[ei].sets[si].reps = e.target.value), d))}
                   />
@@ -259,5 +288,58 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
 
       {picking && <ExercisePicker exercises={exercises} onPick={addExercise} onClose={() => setPicking(false)} />}
     </div>
+  )
+}
+
+/** Shown on an empty new workout: start today's planned session (or another one). */
+function PlanStart({ plan, date, onStart }: { plan: Plan | null; date: string; onStart: (s: PlanSession | null) => void }) {
+  if (!plan) {
+    return (
+      <Link to="/plan" className="card mb-3 block text-sm text-muted">
+        Tip: set up a <span className="text-accent">weekly plan</span> to fill in your exercises automatically.
+      </Link>
+    )
+  }
+  const planned = sessionFor(plan, date)
+  const items = itemsFor(plan, planned)
+  const others = plan.sessions.filter((s) => s.id !== planned?.id && s.items.length)
+  return (
+    <section className="card mb-3" aria-label="Planned workout">
+      <span className="label">{date === todayISO() ? 'Today' : formatDate(date)}</span>
+      <h2 className="text-lg font-bold">{planned?.title ?? 'Rest day'}</h2>
+      {planned?.notes && <p className="text-xs text-muted">{planned.notes}</p>}
+      {items.length > 0 && (
+        <>
+          <ul className="mt-2 mb-3 space-y-0.5 text-sm text-muted">
+            {items.map((i) => (
+              <PlanLine key={i.exerciseId} exerciseId={i.exerciseId} target={formatTarget(i)} />
+            ))}
+          </ul>
+          <button type="button" className="btn-primary w-full" onClick={() => onStart(planned)}>
+            {planned ? `Start ${planned.title}` : 'Start mobility'}
+          </button>
+        </>
+      )}
+      {others.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted">Or do</span>
+          {others.map((s) => (
+            <button key={s.id} type="button" className="btn-ghost min-h-9 px-3 text-xs" onClick={() => onStart(s)}>
+              {s.title}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function PlanLine({ exerciseId, target }: { exerciseId: string; target: string }) {
+  const { exerciseName } = useData()
+  return (
+    <li className="flex justify-between gap-2">
+      <span className="truncate">{exerciseName(exerciseId)}</span>
+      <span className="shrink-0">{target}</span>
+    </li>
   )
 }

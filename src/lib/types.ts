@@ -61,6 +61,34 @@ export interface Profile {
   updatedAt: number
 }
 
+/** One exercise in a planned session: a target, not a logged result. */
+export interface PlanItem {
+  exerciseId: string
+  sets: number
+  repsMin: number
+  /** equal to repsMin for a fixed rep count */
+  repsMax: number
+}
+
+export interface PlanSession {
+  id: string
+  /** e.g. "Push" */
+  title: string
+  /** rest times, focus cues… */
+  notes?: string
+  items: PlanItem[]
+}
+
+/** Weekly plan, stored as a single doc at users/{uid}/meta/plan. */
+export interface Plan {
+  sessions: PlanSession[]
+  /** 7 slots, Monday → Sunday: a session id, or null for a rest day */
+  week: (string | null)[]
+  /** done every day, rest days included (e.g. mobility) */
+  daily: PlanItem[]
+  updatedAt: number
+}
+
 export type CollectionName = 'workouts' | 'exercises' | 'weights'
 
 export interface CollectionMap {
@@ -75,6 +103,8 @@ export interface Backup {
   version: 1
   exportedAt: string
   profile: Profile | null
+  /** optional: backups made before the planner have no plan */
+  plan?: Plan | null
   workouts: Workout[]
   exercises: Exercise[]
   weights: WeightEntry[]

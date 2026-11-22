@@ -6,13 +6,15 @@ import type { Repository } from '../data/repository'
 import { mergeExercises } from '../lib/exercises'
 import { analyzeHistory, type ExerciseRecords, type PREvent } from '../lib/pr'
 import { DEFAULT_PROFILE } from '../lib/profile'
-import type { Exercise, Profile, WeightEntry, Workout } from '../lib/types'
+import type { Exercise, Plan, Profile, WeightEntry, Workout } from '../lib/types'
 import { useAuth } from './AuthContext'
 
 interface DataState {
   repo: Repository
   ready: boolean
   profile: Profile
+  /** null until the user sets up a weekly plan */
+  plan: Plan | null
   workouts: Workout[]
   /** built-in + custom, sorted by name */
   exercises: Exercise[]
@@ -37,7 +39,8 @@ export function DataProvider({ children, repo: injected }: { children: ReactNode
   const [customExercises, setCustom] = useState<Exercise[]>([])
   const [weights, setWeights] = useState<WeightEntry[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [loaded, setLoaded] = useState({ w: false, e: false, b: false, p: false })
+  const [plan, setPlan] = useState<Plan | null>(null)
+  const [loaded, setLoaded] = useState({ w: false, e: false, b: false, p: false, pl: false })
 
   useEffect(() => {
     // DataProvider is keyed by uid, so the repo is stable for the provider's lifetime.
@@ -46,6 +49,7 @@ export function DataProvider({ children, repo: injected }: { children: ReactNode
       repo.watch('exercises', (v) => (setCustom(v), setLoaded((l) => ({ ...l, e: true })))),
       repo.watch('weights', (v) => (setWeights(v), setLoaded((l) => ({ ...l, b: true })))),
       repo.watchProfile((v) => (setProfile(v), setLoaded((l) => ({ ...l, p: true })))),
+      repo.watchPlan((v) => (setPlan(v), setLoaded((l) => ({ ...l, pl: true })))),
     ]
     return () => unsubs.forEach((u) => u())
   }, [repo])
@@ -56,8 +60,9 @@ export function DataProvider({ children, repo: injected }: { children: ReactNode
     const { events, records } = analyzeHistory(workouts)
     return {
       repo,
-      ready: loaded.w && loaded.e && loaded.b && loaded.p,
+      ready: loaded.w && loaded.e && loaded.b && loaded.p && loaded.pl,
       profile: profile ?? DEFAULT_PROFILE,
+      plan,
       workouts: [...workouts].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt),
       exercises,
       customExercises,
@@ -66,7 +71,7 @@ export function DataProvider({ children, repo: injected }: { children: ReactNode
       records,
       exerciseName: (id) => names.get(id) ?? 'Unknown exercise',
     }
-  }, [repo, loaded, profile, workouts, customExercises, weights])
+  }, [repo, loaded, profile, plan, workouts, customExercises, weights])
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

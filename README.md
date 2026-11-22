@@ -14,7 +14,7 @@ A personal gym tracker you can install on your phone. Log workouts quickly, get 
 | Log workout | Exercises, sets, kg, reps, notes and duration. Shows last session's numbers and prefills from them. Drafts survive closing the app |
 | Automatic PRs | Heaviest weight, best estimated 1RM, most volume, most reps at a weight |
 | History | Workouts grouped by month, with a ★ count of PRs per workout |
-| Exercises | 31 built-in exercises plus your own, with per-exercise records, PR timeline and 1RM trend |
+| Exercises | 34 built-in exercises plus your own, with per-exercise records, PR timeline and 1RM trend |
 | Body weight | Daily entries, change since your start weight, BMI, trend line |
 | Profile | Editable height, waist, goals and training targets. Dark/light/system theme. JSON export and import |
 

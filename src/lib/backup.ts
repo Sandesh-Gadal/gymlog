@@ -1,12 +1,13 @@
-import type { Backup, Exercise, Profile, WeightEntry, Workout } from './types'
+import type { Backup, Exercise, Plan, Profile, WeightEntry, Workout } from './types'
 
 export function createBackup(data: {
   profile: Profile | null
+  plan?: Plan | null
   workouts: Workout[]
   exercises: Exercise[]
   weights: WeightEntry[]
 }, now: Date = new Date()): Backup {
-  return { app: 'gymlog', version: 1, exportedAt: now.toISOString(), ...data }
+  return { app: 'gymlog', version: 1, exportedAt: now.toISOString(), ...data, plan: data.plan ?? null }
 }
 
 export class BackupError extends Error {}
@@ -39,7 +40,27 @@ export function parseBackup(raw: unknown): Backup {
     return w as unknown as WeightEntry
   })
   const profile = raw.profile == null ? null : (raw.profile as Profile)
-  return { app: 'gymlog', version: 1, exportedAt: String(raw.exportedAt ?? ''), profile, workouts, exercises, weights }
+  const plan = raw.plan == null ? null : parsePlan(raw.plan)
+  return { app: 'gymlog', version: 1, exportedAt: String(raw.exportedAt ?? ''), profile, plan, workouts, exercises, weights }
+}
+
+/** Plan is optional (added in v0.2 without a version bump), but must be well-formed when present. */
+function parsePlan(p: unknown): Plan {
+  const bad = (what: string) => new BackupError(`Weekly plan has a malformed ${what}.`)
+  if (!isObj(p) || !Array.isArray(p.sessions) || !Array.isArray(p.week) || !Array.isArray(p.daily)) throw bad('structure')
+  if (p.week.length !== 7 || !p.week.every((d) => d === null || typeof d === 'string')) throw bad('week')
+  const checkItems = (items: unknown) => {
+    if (!Array.isArray(items)) throw bad('exercise list')
+    for (const i of items) {
+      if (!isObj(i) || typeof i.exerciseId !== 'string' || !isNum(i.sets) || !isNum(i.repsMin) || !isNum(i.repsMax)) throw bad('exercise')
+    }
+  }
+  for (const s of p.sessions as unknown[]) {
+    if (!isObj(s) || typeof s.id !== 'string' || typeof s.title !== 'string') throw bad('session')
+    checkItems(s.items)
+  }
+  checkItems(p.daily)
+  return p as unknown as Plan
 }
 
 export function downloadJSON(filename: string, data: unknown): void {
