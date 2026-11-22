@@ -3,8 +3,10 @@ import { getFirebase } from '../data/firebase'
 import { createFirestoreRepo } from '../data/firestoreRepo'
 import { createLocalRepo } from '../data/localRepo'
 import type { Repository } from '../data/repository'
+import { computeAchievements, type BadgeStatus } from '../lib/achievements'
 import { mergeExercises } from '../lib/exercises'
 import { analyzeHistory, type ExerciseRecords, type PREvent } from '../lib/pr'
+import { trainingDays } from '../lib/plan'
 import { DEFAULT_PROFILE } from '../lib/profile'
 import type { Exercise, Plan, Profile, WeightEntry, Workout } from '../lib/types'
 import { useAuth } from './AuthContext'
@@ -22,6 +24,9 @@ interface DataState {
   weights: WeightEntry[]
   prEvents: PREvent[]
   records: Map<string, ExerciseRecords>
+  /** sessions per week that count as on target: plan training days, else profile.daysPerWeek */
+  weeklyTarget: number
+  achievements: BadgeStatus[]
   exerciseName: (id: string) => string
 }
 
@@ -58,10 +63,13 @@ export function DataProvider({ children, repo: injected }: { children: ReactNode
     const exercises = mergeExercises(customExercises)
     const names = new Map(exercises.map((e) => [e.id, e.name]))
     const { events, records } = analyzeHistory(workouts)
+    const prof = profile ?? DEFAULT_PROFILE
+    const weeklyTarget = plan ? trainingDays(plan) || prof.daysPerWeek : prof.daysPerWeek
+    const achievements = computeAchievements({ workouts, prEvents: events, weights, startWeightKg: prof.startWeightKg, weeklyTarget })
     return {
       repo,
       ready: loaded.w && loaded.e && loaded.b && loaded.p && loaded.pl,
-      profile: profile ?? DEFAULT_PROFILE,
+      profile: prof,
       plan,
       workouts: [...workouts].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt),
       exercises,
@@ -69,6 +77,8 @@ export function DataProvider({ children, repo: injected }: { children: ReactNode
       weights: [...weights].sort((a, b) => b.date.localeCompare(a.date)),
       prEvents: events,
       records,
+      weeklyTarget,
+      achievements,
       exerciseName: (id) => names.get(id) ?? 'Unknown exercise',
     }
   }, [repo, loaded, profile, plan, workouts, customExercises, weights])

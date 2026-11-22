@@ -12,6 +12,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Dashboard week strip shows each day's planned session, and the weekly target follows the plan.
 - Built-in exercises: Hammer Curl, Overhead Triceps Extension, Shoulder Pass-through (mobility).
 - Backups include the weekly plan. Older backups without one still import.
+- Checklist logging: tick ✓ to complete each set, or "✓ All" per exercise. Only ticked sets are saved. Shows a progress bar of sets done.
+- Rest timer: starts when you tick a set, with −15 / +15 s (remembered as your default) and Skip. Vibrates at the end where supported.
+- Streaks: days in a row and weeks on target, shown on the Dashboard.
+- Achievements page with 23 badges (milestones, streaks, PRs, volume such as 🐘 Elephant for 6,000 kg in one workout, body weight). New badges are announced when you save a workout.
+
+### Changed
+- Planned sets are prefilled with last session's reps (or the bottom of the rep range), ready to tick.
 
 ## [0.1.0] - 2026-11-21
 

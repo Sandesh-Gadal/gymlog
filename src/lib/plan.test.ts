@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BUILT_IN_EXERCISES } from './exercises'
 import { formatTarget, itemsFor, pplTemplate, removeSession, repsHint, sessionFor, trainingDays, weekdayIndex } from './plan'
-import { entriesFromPlan } from './workoutForm'
+import { countSets, entriesFromPlan, toWorkoutEntries, upgradeDraftSets } from './workoutForm'
 
 const plan = pplTemplate(1)
 
@@ -50,18 +50,18 @@ describe('entriesFromPlan', () => {
   let n = 0
   const key = () => `k${++n}`
 
-  it('one row per planned set, weights from last session, reps left empty', () => {
+  it('one row per planned set, values from last session, nothing ticked', () => {
     const last = new Map([['bench-press', [{ weight: 40, reps: 10 }, { weight: 45, reps: 8 }]]])
     const [e] = entriesFromPlan([{ exerciseId: 'bench-press', sets: 4, repsMin: 6, repsMax: 10 }], (id) => last.get(id), key)
     expect(e.sets).toEqual([
-      { weight: '40', reps: '' },
-      { weight: '45', reps: '' },
-      { weight: '45', reps: '' },
-      { weight: '45', reps: '' },
+      { weight: '40', reps: '10', done: false },
+      { weight: '45', reps: '8', done: false },
+      { weight: '45', reps: '8', done: false },
+      { weight: '45', reps: '8', done: false },
     ])
   })
 
-  it('blank weights for new exercises and no duplicate exercises', () => {
+  it('new exercises get blank weight and the bottom of the rep range; no duplicates', () => {
     const items = [
       { exerciseId: 'squat', sets: 2, repsMin: 5, repsMax: 5 },
       { exerciseId: 'squat', sets: 3, repsMin: 8, repsMax: 8 },
@@ -69,8 +69,34 @@ describe('entriesFromPlan', () => {
     const entries = entriesFromPlan(items, () => undefined, key)
     expect(entries).toHaveLength(1)
     expect(entries[0].sets).toEqual([
-      { weight: '', reps: '' },
-      { weight: '', reps: '' },
+      { weight: '', reps: '5', done: false },
+      { weight: '', reps: '5', done: false },
     ])
+  })
+})
+
+describe('checklist', () => {
+  it('only ticked sets with reps are saved', () => {
+    const entries = [
+      {
+        key: 'a',
+        exerciseId: 'bench-press',
+        notes: '',
+        sets: [
+          { weight: '40', reps: '10', done: true },
+          { weight: '40', reps: '10', done: false },
+          { weight: '0', reps: '', done: true },
+        ],
+      },
+      { key: 'b', exerciseId: 'squat', notes: '', sets: [{ weight: '60', reps: '8', done: false }] },
+    ]
+    expect(toWorkoutEntries(entries)).toEqual([{ exerciseId: 'bench-press', notes: undefined, sets: [{ weight: 40, reps: 10 }] }])
+    expect(countSets(entries)).toEqual({ done: 1, total: 4 })
+  })
+
+  it('old drafts without the done flag keep their filled-in sets', () => {
+    const old = [{ key: 'a', exerciseId: 'squat', notes: '', sets: [{ weight: '60', reps: '8' }, { weight: '60', reps: '' }] }]
+    const [e] = upgradeDraftSets(old as never)
+    expect(e.sets.map((s) => s.done)).toEqual([true, false])
   })
 })

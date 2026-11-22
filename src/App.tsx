@@ -1,5 +1,6 @@
 import { HashRouter, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
+import { Achievements } from './pages/Achievements'
 import { Dashboard } from './pages/Dashboard'
 import { ExerciseDetail } from './pages/ExerciseDetail'
 import { Exercises } from './pages/Exercises'
@@ -27,6 +28,7 @@ export function AppRoutes() {
         <Route path="weight" element={<Weight />} />
         <Route path="profile" element={<Profile />} />
         <Route path="plan" element={<PlanPage />} />
+        <Route path="achievements" element={<Achievements />} />
         <Route path="*" element={<Dashboard />} />
       </Route>
     </Routes>

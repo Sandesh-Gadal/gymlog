@@ -50,3 +50,9 @@ export function slugify(s: string): string {
 export function fmtKg(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1)
 }
+
+/** 75 → "1:15" */
+export function formatClock(totalSec: number): string {
+  const s = Math.max(0, Math.round(totalSec))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}

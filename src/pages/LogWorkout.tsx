@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ExercisePicker } from '../components/ExercisePicker'
+import { RestTimer } from '../components/RestTimer'
 import { fmtKg, formatDate, newId, todayISO } from '../lib/format'
 import { formatTarget, itemsFor, repsHint, sessionFor } from '../lib/plan'
 import type { Plan, PlanSession, Workout, WorkoutEntry } from '../lib/types'
-import { entriesFromPlan, toWorkoutEntries, type DraftEntry } from '../lib/workoutForm'
+import { canComplete, countSets, entriesFromPlan, toWorkoutEntries, upgradeDraftSets, type DraftEntry } from '../lib/workoutForm'
 import { useData } from '../state/DataContext'
+import { getRestSeconds, setRestSeconds } from '../state/restTimer'
 
 interface Draft {
   date: string
@@ -22,7 +24,9 @@ const DRAFT_KEY = 'gymlog:draft'
 function loadDraft(): Draft | null {
   try {
     const raw = localStorage.getItem(DRAFT_KEY)
-    return raw ? (JSON.parse(raw) as Draft) : null
+    if (!raw) return null
+    const d = JSON.parse(raw) as Draft
+    return { ...d, entries: upgradeDraftSets(d.entries) }
   } catch {
     return null
   }
@@ -50,7 +54,7 @@ function fromWorkout(w: Workout): Draft {
       key: newId(),
       exerciseId: e.exerciseId,
       notes: e.notes ?? '',
-      sets: e.sets.map((s) => ({ weight: String(s.weight), reps: String(s.reps) })),
+      sets: e.sets.map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: true })),
     })),
   }
 }
@@ -70,6 +74,8 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
   const { workouts, exercises, exerciseName, repo, plan } = useData()
   const [draft, setDraft] = useState<Draft>(initial)
   const [picking, setPicking] = useState(false)
+  const [restEndsAt, setRestEndsAt] = useState<number | null>(null)
+  const closeRest = useCallback(() => setRestEndsAt(null), [])
 
   // Persist new-workout drafts so closing the app mid-session loses nothing.
   useEffect(() => {
@@ -109,17 +115,33 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
         key: newId(),
         exerciseId,
         notes: '',
-        sets: [{ weight: prev ? String(prev.weight) : '', reps: prev ? String(prev.reps) : '' }],
+        sets: [{ weight: prev ? String(prev.weight) : '', reps: prev ? String(prev.reps) : '', done: false }],
       })
       return d
     })
   }
 
+  /** Tick or untick a set. Ticking starts the rest timer (not when editing a past workout). */
+  const toggleSet = (ei: number, si: number) => {
+    const wasDone = draft.entries[ei].sets[si].done
+    update((d) => ((d.entries[ei].sets[si].done = !wasDone), d))
+    if (!wasDone && !id) setRestEndsAt(Date.now() + getRestSeconds() * 1000)
+  }
+  const tickAll = (ei: number) =>
+    update((d) => (d.entries[ei].sets.forEach((s) => (s.done = s.done || canComplete(s))), d))
+  const adjustRest = (delta: number) => {
+    setRestSeconds(getRestSeconds() + delta)
+    setRestEndsAt((t) => (t ? t + delta * 1000 : t))
+  }
+
   const entries = toWorkoutEntries(draft.entries)
+  const progress = countSets(draft.entries)
   const canSave = entries.length > 0
 
   const save = async () => {
     if (!canSave) return
+    const left = progress.total - progress.done
+    if (left > 0 && !confirm(`${left} set${left > 1 ? 's are' : ' is'} not ticked and won't be saved. Save anyway?`)) return
     const now = Date.now()
     const elapsed = Math.round((now - draft.startedAt) / 60000)
     const duration = Number(draft.durationMin) || (!editing && elapsed > 0 && elapsed < 300 ? elapsed : undefined)
@@ -161,6 +183,19 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
       {!id && draft.entries.length === 0 && (
         <PlanStart plan={plan} date={draft.date} onStart={startFromPlan} />
       )}
+      {draft.entries.length > 0 && (
+        <div className="mb-3" aria-label="Progress">
+          <div className="mb-1 flex justify-between text-xs text-muted">
+            <span>
+              <b className="text-fg">{progress.done}</b> / {progress.total} sets done
+            </span>
+            {progress.done === progress.total && progress.total > 0 && <span className="text-accent">All done 💪</span>}
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(progress.done / Math.max(1, progress.total)) * 100}%` }} />
+          </div>
+        </div>
+      )}
       {draft.sessionId !== undefined && session?.notes && draft.entries.length > 0 && (
         <p className="mb-3 rounded-xl bg-surface-2 px-3 py-2 text-xs text-muted">
           <b className="text-fg">{session.title}</b> · {session.notes}
@@ -186,23 +221,28 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
                     </p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  className="text-xs text-danger"
-                  onClick={() => update((d) => (d.entries.splice(ei, 1), d))}
-                >
-                  Remove
-                </button>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <button type="button" className="text-xs font-semibold text-accent" onClick={() => tickAll(ei)}>
+                    ✓ All
+                  </button>
+                  <button type="button" className="text-xs text-danger" onClick={() => update((d) => (d.entries.splice(ei, 1), d))}>
+                    Remove
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-[2rem_1fr_1fr_2rem] items-center gap-2 text-xs text-muted">
+              <div className="grid grid-cols-[1.5rem_1fr_1fr_2.75rem_1.25rem] items-center gap-2 text-xs text-muted">
                 <span>Set</span>
                 <span>Weight (kg)</span>
                 <span>Reps</span>
+                <span className="text-center">Done</span>
                 <span />
               </div>
               {entry.sets.map((s, si) => (
-                <div key={si} className="mt-1.5 grid grid-cols-[2rem_1fr_1fr_2rem] items-center gap-2">
+                <div
+                  key={si}
+                  className={`mt-1.5 grid grid-cols-[1.5rem_1fr_1fr_2.75rem_1.25rem] items-center gap-2 rounded-xl transition ${s.done ? 'bg-accent/10' : ''}`}
+                >
                   <span className="text-center text-sm font-semibold text-muted">{si + 1}</span>
                   <input
                     className="input"
@@ -222,6 +262,18 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
                   />
                   <button
                     type="button"
+                    aria-label={`Complete set ${si + 1}`}
+                    aria-pressed={s.done}
+                    disabled={!s.done && !canComplete(s)}
+                    className={`grid size-11 place-items-center rounded-xl border text-lg font-bold transition disabled:opacity-30 ${
+                      s.done ? 'border-accent bg-accent text-accent-ink' : 'border-line bg-surface-2 text-muted'
+                    }`}
+                    onClick={() => toggleSet(ei, si)}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
                     aria-label={`Delete set ${si + 1}`}
                     className="text-lg text-muted"
                     onClick={() => update((d) => (d.entries[ei].sets.splice(si, 1), d))}
@@ -237,7 +289,7 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
                   onClick={() =>
                     update((d) => {
                       const sets = d.entries[ei].sets
-                      sets.push({ ...(sets[sets.length - 1] ?? { weight: '', reps: '' }) })
+                      sets.push({ ...(sets[sets.length - 1] ?? { weight: '', reps: '' }), done: false })
                       return d
                     })
                   }
@@ -286,6 +338,7 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
         </button>
       </div>
 
+      {restEndsAt && <RestTimer endsAt={restEndsAt} onAdjust={adjustRest} onClose={closeRest} />}
       {picking && <ExercisePicker exercises={exercises} onPick={addExercise} onClose={() => setPicking(false)} />}
     </div>
   )

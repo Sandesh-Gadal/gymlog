@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AppRoutes } from './App'
 import { createLocalRepo } from './data/localRepo'
 import { AuthProvider } from './state/AuthContext'
@@ -35,6 +35,7 @@ async function logBench(user: ReturnType<typeof userEvent.setup>, sets: [string,
     await user.type(w, sets[i][0])
     await user.clear(r)
     await user.type(r, sets[i][1])
+    await user.click(within(card).getByRole('button', { name: `Complete set ${i + 1}` }))
   }
   await user.click(screen.getByRole('button', { name: 'Save workout' }))
 }
@@ -52,6 +53,7 @@ describe('App (local mode)', () => {
     await logBench(user, [['35', '10']])
     expect(await screen.findByText('Workout saved.')).toBeInTheDocument()
     expect(screen.queryByText(/new PR/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Badge unlocked: First Rep/)).toBeInTheDocument()
 
     await logBench(user, [['30', '12'], ['35', '10'], ['40', '10']])
     expect(await screen.findByText(/You set 3 new PRs/)).toBeInTheDocument()
@@ -72,10 +74,20 @@ describe('App (local mode)', () => {
 
     const mobility = screen.getByRole('region', { name: 'Shoulder Pass-through (mobility)' })
     expect(within(mobility).getByText('2 × 10–15')).toBeInTheDocument()
-    expect(within(mobility).getAllByPlaceholderText('10–15')).toHaveLength(2)
+    // Checklist: prefilled with the bottom of the rep range, nothing ticked yet
+    expect(within(mobility).getByLabelText('Set 1 reps')).toHaveValue('10')
+    expect(screen.getByText(/^0$/, { selector: 'b' })).toBeInTheDocument()
 
-    await user.type(within(mobility).getByLabelText('Set 1 reps'), '12')
+    await user.click(within(mobility).getByRole('button', { name: 'Complete set 1' }))
+    expect(within(mobility).getByRole('button', { name: 'Complete set 1' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('timer', { name: 'Rest timer' })).toBeInTheDocument()
+
+    // Unticked sets are dropped, after a confirmation
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     await user.click(screen.getByRole('button', { name: 'Save workout' }))
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/not ticked and won't be saved/))
+    confirm.mockRestore()
     expect(await screen.findByText('Workout saved.')).toBeInTheDocument()
+    expect(screen.getByText('Shoulder Pass-through (mobility)')).toBeInTheDocument()
   })
 })

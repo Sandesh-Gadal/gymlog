@@ -8,13 +8,14 @@ export function WorkoutView() {
   const { id } = useParams()
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { workouts, prEvents, exerciseName, repo, ready } = useData()
+  const { workouts, prEvents, achievements, exerciseName, repo, ready } = useData()
   const workout = workouts.find((w) => w.id === id)
 
   if (!workout) return <p className="text-muted">{ready ? 'Workout not found.' : 'Loading…'}</p>
 
   const prs = prEvents.filter((e) => e.workoutId === workout.id)
   const justSaved = params.get('saved') === '1'
+  const newBadges = achievements.filter((a) => a.unlocked?.workoutId === workout.id)
 
   const remove = async () => {
     if (!confirm('Delete this workout? This cannot be undone.')) return
@@ -27,6 +28,15 @@ export function WorkoutView() {
       {justSaved && (
         <div role="status" className="mb-4 rounded-2xl border border-accent bg-surface p-4 text-sm">
           <b>Workout saved.</b> {prs.length ? `You set ${prs.length} new PR${prs.length > 1 ? 's' : ''}! 🎉` : 'Nice work.'}
+          {newBadges.length > 0 && (
+            <Link to="/achievements" className="mt-3 flex flex-wrap gap-2">
+              {newBadges.map((a) => (
+                <span key={a.id} className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink">
+                  {a.emoji} Badge unlocked: {a.name}
+                </span>
+              ))}
+            </Link>
+          )}
         </div>
       )}
       <header className="mb-4">

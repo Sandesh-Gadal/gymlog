@@ -54,6 +54,11 @@ export function Profile() {
 
       <ProfileForm key={profile.updatedAt} />
 
+      <Link to="/achievements" className="card mt-3 flex items-center justify-between">
+        <span>Achievements</span>
+        <span className="text-muted">›</span>
+      </Link>
+
       <Link to="/plan" className="card mt-3 flex items-center justify-between">
         <span>Weekly plan</span>
         <span className="text-muted">›</span>

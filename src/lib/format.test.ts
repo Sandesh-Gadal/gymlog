@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mergeExercises } from './exercises'
-import { addDays, fmtKg, slugify, startOfWeek, toISODate } from './format'
+import { addDays, fmtKg, formatClock, slugify, startOfWeek, toISODate } from './format'
 import { bmi } from './profile'
 
 describe('dates', () => {
@@ -18,6 +18,11 @@ describe('misc', () => {
   it('fmtKg', () => {
     expect(fmtKg(40)).toBe('40')
     expect(fmtKg(42.5)).toBe('42.5')
+  })
+  it('formatClock', () => {
+    expect(formatClock(75)).toBe('1:15')
+    expect(formatClock(9)).toBe('0:09')
+    expect(formatClock(-3)).toBe('0:00')
   })
   it('bmi', () => expect(bmi(85, 179)).toBe(26.5))
   it('custom exercises merge with built-ins', () => {

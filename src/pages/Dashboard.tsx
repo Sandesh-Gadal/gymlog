@@ -3,21 +3,25 @@ import { Link } from 'react-router'
 import { Heatmap } from '../components/Heatmap'
 import { Empty, PRBadge, SectionHeader, Stat } from '../components/ui'
 import { addDays, fmtKg, formatDate, startOfWeek, toISODate, todayISO } from '../lib/format'
+import { currentDayStreak, currentWeekStreak } from '../lib/achievements'
 import { buildHeatmap } from '../lib/heatmap'
-import { sessionFor, trainingDays } from '../lib/plan'
+import { sessionFor } from '../lib/plan'
 import { workoutVolume } from '../lib/pr'
 import { useData } from '../state/DataContext'
 
 export function Dashboard() {
-  const { profile, plan, workouts, weights, prEvents, exerciseName } = useData()
+  const { profile, plan, workouts, weights, prEvents, exerciseName, weeklyTarget: target, achievements } = useData()
   const [now] = useState(() => new Date())
   const today = todayISO(now)
   const weekStart = startOfWeek(now)
   const weekDays = Array.from({ length: 7 }, (_, i) => toISODate(addDays(weekStart, i)))
   const trainedDates = new Set(workouts.map((w) => w.date))
   const thisWeek = weekDays.filter((d) => trainedDates.has(d)).length
-  const target = plan ? trainingDays(plan) : profile.daysPerWeek
   const todaySession = sessionFor(plan, today)
+  const dayStreak = currentDayStreak(trainedDates, now)
+  const weekStreak = currentWeekStreak(workouts.map((w) => w.date), target, now)
+  const badges = achievements.filter((a) => a.unlocked)
+  const latestBadge = [...badges].sort((a, b) => b.unlocked!.date.localeCompare(a.unlocked!.date))[0]
   const heatmap = useMemo(() => buildHeatmap(workouts, now), [workouts, now])
 
   const latest = weights[0]
@@ -88,6 +92,20 @@ export function Dashboard() {
           )}
         </Link>
       </section>
+
+      <Link to="/achievements" className="card mt-3 flex items-center justify-between gap-3" aria-label="Achievements">
+        <span className="flex gap-4 text-sm">
+          <span title="Day streak">
+            🔥 <b className="text-fg">{dayStreak}</b> <span className="text-muted">day{dayStreak === 1 ? '' : 's'}</span>
+          </span>
+          <span title="Weeks on target">
+            📅 <b className="text-fg">{weekStreak}</b> <span className="text-muted">wk{weekStreak === 1 ? '' : 's'}</span>
+          </span>
+        </span>
+        <span className="truncate text-sm text-muted">
+          {latestBadge ? `${latestBadge.emoji} ${latestBadge.name}` : '🏅'} · <b className="text-fg">{badges.length}</b>/{achievements.length} ›
+        </span>
+      </Link>
 
       <section className="card mt-3">
         <div className="mb-3 flex items-baseline justify-between">
