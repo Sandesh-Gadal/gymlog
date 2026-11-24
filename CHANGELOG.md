@@ -16,6 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Rest timer: starts when you tick a set, with −15 / +15 s (remembered as your default) and Skip. Vibrates at the end where supported.
 - Streaks: days in a row and weeks on target, shown on the Dashboard.
 - Achievements page with 23 badges (milestones, streaks, PRs, volume such as 🐘 Elephant for 6,000 kg in one workout, body weight). New badges are announced when you save a workout.
+- Exercise demos (preview: Bench Press, Squat): start and end photos crossfading like an animation, muscles worked and step-by-step instructions, on the exercise page and via "How to" while logging. Photos are from free-exercise-db (public domain) and cached for offline use.
 
 ### Changed
 - Planned sets are prefilled with last session's reps (or the bottom of the rep range), ready to tick.

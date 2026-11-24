@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { ExerciseDemo } from '../components/ExerciseDemo'
 import { ExercisePicker } from '../components/ExercisePicker'
 import { RestTimer } from '../components/RestTimer'
+import { demoFor } from '../lib/demos'
 import { fmtKg, formatDate, newId, todayISO } from '../lib/format'
 import { formatTarget, itemsFor, repsHint, sessionFor } from '../lib/plan'
 import type { Plan, PlanSession, Workout, WorkoutEntry } from '../lib/types'
@@ -75,6 +77,7 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
   const [draft, setDraft] = useState<Draft>(initial)
   const [picking, setPicking] = useState(false)
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null)
+  const [demoId, setDemoId] = useState<string | null>(null)
   const closeRest = useCallback(() => setRestEndsAt(null), [])
 
   // Persist new-workout drafts so closing the app mid-session loses nothing.
@@ -213,6 +216,11 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
                   <h2 className="font-semibold">
                     {exerciseName(entry.exerciseId)}
                     {target && <span className="ml-2 text-xs font-medium text-accent">{formatTarget(target)}</span>}
+                    {demoFor(entry.exerciseId) && (
+                      <button type="button" className="ml-2 rounded-full border border-line px-2 text-[11px] font-medium text-muted" onClick={() => setDemoId(entry.exerciseId)}>
+                        How to
+                      </button>
+                    )}
                   </h2>
                   {last && (
                     <p className="text-xs text-muted">
@@ -338,6 +346,19 @@ function WorkoutForm({ editing, initial }: { editing?: Workout; initial: Draft }
         </button>
       </div>
 
+      {demoId && (
+        <div role="dialog" aria-modal="true" aria-label={`How to: ${exerciseName(demoId)}`} className="fixed inset-0 z-30 flex items-end bg-black/50" onClick={() => setDemoId(null)}>
+          <div className="mx-auto max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold">{exerciseName(demoId)}</h2>
+              <button type="button" className="btn-ghost min-h-9 px-3" onClick={() => setDemoId(null)}>
+                Close
+              </button>
+            </div>
+            <ExerciseDemo exerciseId={demoId} />
+          </div>
+        </div>
+      )}
       {restEndsAt && <RestTimer endsAt={restEndsAt} onAdjust={adjustRest} onClose={closeRest} />}
       {picking && <ExercisePicker exercises={exercises} onPick={addExercise} onClose={() => setPicking(false)} />}
     </div>

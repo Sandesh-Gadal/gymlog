@@ -1,5 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router'
+import { ExerciseDemo } from '../components/ExerciseDemo'
 import { Empty, PRBadge, SectionHeader, Sparkline, Stat } from '../components/ui'
+import { demoFor } from '../lib/demos'
 import { estimate1RM, entryVolume, sortChronological } from '../lib/pr'
 import { fmtKg, formatDate } from '../lib/format'
 import { useData } from '../state/DataContext'
@@ -33,6 +35,13 @@ export function ExerciseDetail() {
         <p className="text-xs text-muted capitalize">{exercise.muscleGroup}</p>
         <h1 className="page-title">{exercise.name}</h1>
       </header>
+
+      {demoFor(id) && (
+        <section className="card mb-3" aria-label="How to do it">
+          <span className="label">How to do it</span>
+          <ExerciseDemo exerciseId={id} />
+        </section>
+      )}
 
       {rec ? (
         <>
